@@ -21,7 +21,7 @@ specialty_mapping = {
     "Dietetic": "Registered Dietician"  #Misspelled on AZ's website
 }
 
-# df = pd.read_excel('file path') #Add file path here
+df = pd.read_excel('/Users/markrubin/Development/providerscrape/arizona/az_nonrehab.xlsx')
 
 
 def check_provider(driver, first_name, last_name, city, specialty):
@@ -117,20 +117,20 @@ try:
     driver.get("https://www.azahcccs.gov/Members/ProgramsAndCoveredServices/ProviderListings/")
     print("Page loaded")
 
-    # # Update the 'State Enrolled' column based on the match
-    # df['State Enrolled'] = df.apply(lambda row: check_provider(driver, row['FIRST_NAME'], row['LAST_NAME'], row['CITY'], row['SPECIALTY']), axis=1)
+    # Update the 'State Enrolled' column based on the match
+    df['State Enrolled'] = df.apply(lambda row: check_provider(driver, row['FIRST_NAME'], row['LAST_NAME'], row['CITY'], row['SPECIALTY']), axis=1)
 
-    # Test with specific values
-    first_name = "David"
-    last_name = "Lewandowski"
-    city = "Kayenta"
-    specialty = "Chiropractor"
-    result = check_provider(driver, first_name, last_name, city, specialty)
-    print(f"Result for {first_name} {last_name}: {result}")
+    # # Test with specific values
+    # first_name = "David"
+    # last_name = "Lewandowski"
+    # city = "Kayenta"
+    # specialty = "Chiropractor"
+    # result = check_provider(driver, first_name, last_name, city, specialty)
+    # print(f"Result for {first_name} {last_name}: {result}")
 
 finally:
     driver.quit()
-#
-# # Save updated dataframe to new Excel file
-# df.to_excel('/Users/MarkRu/OneDrive - American Specialty Health, Inc/Desktop/Development/Medicaid Scripts/arizona_scripts/az_nonrehab_updated.xlsx', index=False)
-# print("Data saved")
+
+# Save updated dataframe to new Excel file
+df.to_excel('/Users/markrubin/Development/providerscrape/arizona/az_nonrehab.xlsx', index=False)
+print("Data saved")
