@@ -27,52 +27,50 @@ df = pd.read_excel('/Users/markrubin/Development/providerscrape/arizona/az_nonre
 def check_provider(driver, first_name, last_name, city, specialty):
     try:
         wait = WebDriverWait(driver, 10)
-
-        # Map the specialty using the dictionary
         mapped_specialty = specialty_mapping.get(specialty, specialty)
 
-        # Wait for name input to be visible and enter the name value
-        name_input = wait.until(EC.visibility_of_element_located((By.NAME, "ctl00$ContentPlaceHolder1$txtProviderName")))
-        name_input.clear()
-        name_input.send_keys(first_name + " " + last_name)
-        print(f"Entered name: {first_name} {last_name}")
+        def perform_search(name_input_text):
 
-        time.sleep(0.5)
+            # Enter the name and specialty
+            name_input = wait.until(EC.visibility_of_element_located((By.NAME, "ctl00$ContentPlaceHolder1$txtProviderName")))
+            name_input.clear()
+            name_input.send_keys(name_input_text)
+            print(f"Entered name: {name_input_text}")
 
-        # # Wait for the city input field to be visible and enter the city value
-        # city_input = wait.until(EC.visibility_of_element_located((By.NAME, "ctl00$ContentPlaceHolder1$txtCity")))
-        # city_input.send_keys(Keys.CONTROL + "a")
-        # city_input.send_keys(Keys.DELETE)
-        # city_input.send_keys(city)
-        # print(f"Entered city: {city}")
-        #
-        # time.sleep(2)
+            # Select the mapped specialty
+            specialty_select = wait.until(EC.visibility_of_element_located((By.NAME, "ctl00$ContentPlaceHolder1$ddlSpecialty")))
+            Select(specialty_select).select_by_visible_text(mapped_specialty)
+            print(f"Selected specialty: {mapped_specialty}")
 
-        # Wait for specialty dropdown to be visible and select the specialty value
-        specialty_select = wait.until(EC.visibility_of_element_located((By.NAME, "ctl00$ContentPlaceHolder1$ddlSpecialty")))
-        Select(specialty_select).select_by_visible_text(mapped_specialty)
-        print(f"Selected specialty: {mapped_specialty}")
+            # Click the search button
+            search_button = wait.until(EC.element_to_be_clickable((By.NAME, "ctl00$ContentPlaceHolder1$btnSearch")))
+            search_button.click()
+            print("Search button clicked")
+            time.sleep(0.5)  # Brief wait for results
 
-        time.sleep(0.5)
+        # First Attempt with Full Name
+        full_name = f"{first_name} {last_name}"
+        perform_search(full_name)
 
-        # Search Button functionality
-        search_button = wait.until(EC.element_to_be_clickable((By.NAME, "ctl00$ContentPlaceHolder1$btnSearch")))
-        search_button.click()
-        print("Search button clicked")
-
-        time.sleep(0.5)
-
-        # Look for No Records Message first
+        # Check for No records found message
         no_records_elements = driver.find_elements(By.XPATH, "//p[@class='alert alert-danger']")
         if no_records_elements and no_records_elements[0].is_displayed():
-            print("No records found message detected.")
-            return "N"
+            print("No records found message detected with full name. Retrying with last name only.")
 
-        # Wait for the provider rows to be visible
+            # Retry with only the last name if full name not found
+            perform_search(last_name)
+
+            # Check again for No records found message
+            no_records_elements = driver.find_elements(By.XPATH, "//p[@class='alert alert-danger']")
+            if no_records_elements and no_records_elements[0].is_displayed():
+                print("No records found message detected with last name only. Returning 'N'.")
+                return "N"
+
+        # Check Rows if Results Found
         provider_table = wait.until(EC.presence_of_element_located((By.XPATH, "//html/body/form/div[3]/div[2]/div/div/div/div/div/table/tbody")))
         provider_rows = provider_table.find_elements(By.XPATH, ".//tr")
 
-        # Format the expected name
+        # Format the expected name, city, and specialty
         expected_first = first_name.strip().upper()
         expected_last = last_name.strip().upper()
         expected_city = city.upper()
@@ -80,6 +78,7 @@ def check_provider(driver, first_name, last_name, city, specialty):
 
         found_city = False
 
+        # Check each row for a match
         for row in provider_rows[1:]:
             try:
                 provider_name = row.find_element(By.XPATH, ".//td[1]/a").text.strip().upper()
@@ -88,10 +87,9 @@ def check_provider(driver, first_name, last_name, city, specialty):
 
                 print(f"Checking: {provider_name} - {provider_city} - {provider_specialty}")
 
+                # Match on first and last name or last name alone, and exact specialty match
                 if expected_first in provider_name and expected_last in provider_name and expected_specialty == provider_specialty:
-                    # Check for City match
-                    if city.upper() == provider_city:
-                        found_city = True
+                    if expected_city == provider_city:
                         print(f"Match found: {provider_name} - {provider_city} - {provider_specialty}")
                         return "Y"
 
@@ -107,9 +105,7 @@ def check_provider(driver, first_name, last_name, city, specialty):
         return "N"
 
 
-# Specify the path to the chromedriver executable
 chrome_driver_path = os.getenv('CHROME_DRIVER_PATH')
-
 service = Service(chrome_driver_path)
 driver = webdriver.Chrome(service=service)
 
