@@ -63,29 +63,31 @@ def check_provider(driver, first_name, last_name, city, specialty):
 
         time.sleep(2)
 
-        # Check for "No records found" message
-        no_records_message = wait.until(EC.presence_of_element_located((By.XPATH, "//p[@class='alert alert-danger']")))
+        # Check for "No records found" message with clearer handling
         try:
+            no_records_message = wait.until(
+                EC.presence_of_element_located((By.XPATH, "//p[@class='alert alert-danger']"))
+            )
             if no_records_message.is_displayed():
                 print("No records found message detected.")
                 return "N"
-        except TimeoutException as e:
-            return "Y"
+        except TimeoutException:
+            print("No 'No records found' message - proceeding with provider search.")
 
         # Wait for the provider rows to be visible
         provider_table = wait.until(EC.presence_of_element_located((By.XPATH, "//html/body/form/div[3]/div[2]/div/div/div/div/div/table/tbody")))
         provider_rows = provider_table.find_elements(By.XPATH, ".//tr")
 
         # Format the expected name
-        expected_name = (first_name + " " + last_name).upper()
+        expected_name = f"{first_name} {last_name}".upper()
         expected_city = city.upper()
         expected_specialty = specialty.upper()
 
         for row in provider_rows[1:]:
             try:
                 provider_name = row.find_element(By.XPATH, ".//td[1]/a").text.strip().upper()
-                provider_city = row.find_element(By.XPATH, ".//td[2]").text.strip().upper()
-                provider_specialty = row.find_element(By.XPATH, ".//td[4]").text.strip().upper()
+                provider_specialty = row.find_element(By.XPATH, ".//td[2]").text.strip().upper()
+                provider_city = row.find_element(By.XPATH, ".//td[4]").text.strip().upper()
 
                 print(f"Checking: {provider_name} - {provider_city} - {provider_specialty}")
 
