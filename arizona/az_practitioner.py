@@ -135,3 +135,26 @@ def check_provider(driver, first_name, last_name, speciality):
     except Exception as e:
         print(f"An error occured: {e}")
         return "N"
+
+
+chrome_driver_path = os.getenv('CHROME_DRIVER_PATH')
+service = Service(chrome_driver_path)
+driver = webdriver.Chrome(service=service)
+
+try:
+    driver.get("https://www.azahcccs.gov/Members/ProgramsAndCoveredServices/ProviderListings/")
+    print("Page loaded")
+
+    # Update 'State Enrolled' columb based on match for specific range of rows
+    start_row = 0 # Change to desired start row (inclusive)
+    end_row = 100 # Change to desired end row (not inclusive)
+
+    df_subset = df.iloc[start_row:end_row].copy()
+    df_subset['State Enrolled'] = df_subset['State Enrolled'].astype(str) # Ensure column is string type
+    df_subset.loc[:, 'State Enrolled'] = df_subset.apply(lambda row: check_provider(driver, row['FIRST_NAME'], row['LAST_NAME'], row['DEGREE']), axis=1)
+
+    # Save updated dataframe to new Excel file
+    df_subset.to_excel('/Users/markrubin/Development/providerscrape/arizona/az_practitioner.xlsx', index=False)
+    print("Data saved")
+finally:
+    driver.quit()
