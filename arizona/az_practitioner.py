@@ -13,21 +13,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import os
-
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-import pandas as pd
-import time
-from dotenv import load_dotenv
-
-load_dotenv()
-
 # Degree mapping dictionary
 specialty_mapping = {
     "OT": "Therapist-Occupational",
@@ -75,3 +60,42 @@ def check_provider(driver, first_name, last_name, speciality):
             perform_search(last_name)
 
             time.sleep(0.5)
+
+            # Check again for no records message
+            no_record_elements = driver.find_elements(By.XPATH, "//p[@class=alert alert-danger']")
+            if no_record_elements and no_record_elements[0].is_displayed():
+                print("No records message detected with full name. Retrying with last name only")
+                return "N - Perform manual check"
+
+    # Format expected bane and speciality
+    expected_first = first_name.strip().upper()
+    expected_last = last_name.strip().upper()
+    expected_specialty = mapped_specialty.strip().upper()
+
+    # Set ellipsis link to false for later utilization
+    clicked_ellipsis = False
+
+    # Loop to handle pagination when necessary
+    while True:
+        # Check rows if Results Found in either case
+        provider_table = wait.until(EC.presence_of_element_located((By.XPATH, "//html/body/form/div[3]/div[2]/div/div/div/div/div/table/tbody")))
+        provider_rows = provider_table.find_elements(By.XPATH, ".//tr")
+
+        # Check each row for a match (skip first row as it is a header row)
+        for row in provider_rows[1:]:
+            try:
+                provider_name = row.find_element(By.XPATH, ".//td[1]/a").text.strip().upper()
+                provider_specialty = row.find_element(By.XPATH, ".//td[2]").text.strip().upper()
+
+                print(f"Checking: {provider_name} - {provider_specialty}")
+
+                # Match on first and last name or last name alone, and exact specialty match
+                if expected_first in provider_name and expected_last in provider_name and expected_specialty == provider_specialty:
+                    print(f"Match found: {provider_name} - {provider_specialty}")
+                    return "Y"
+
+            except NoSuchElementException as e:
+                print(f"Element not found in row: {e}")
+
+        # Check for presence of a numbered pagination link
+
