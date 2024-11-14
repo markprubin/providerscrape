@@ -20,7 +20,9 @@ specialty_mapping = {
     "LPT": "Therapist-Psychiatric"
 }
 
+
 df = pd.read_excel('/Users/MarkRu/OneDrive - American Specialty Health, Inc/Desktop/Development/Medicaid Scripts/arizona_scripts/az_practitioner.xlsx')
+
 
 def check_provider(driver, first_name, last_name, speciality):
     try:
@@ -67,35 +69,69 @@ def check_provider(driver, first_name, last_name, speciality):
                 print("No records message detected with full name. Retrying with last name only")
                 return "N - Perform manual check"
 
-    # Format expected bane and speciality
-    expected_first = first_name.strip().upper()
-    expected_last = last_name.strip().upper()
-    expected_specialty = mapped_specialty.strip().upper()
+        # Format expected bane and speciality
+        expected_first = first_name.strip().upper()
+        expected_last = last_name.strip().upper()
+        expected_specialty = mapped_specialty.strip().upper()
 
-    # Set ellipsis link to false for later utilization
-    clicked_ellipsis = False
+        # Set ellipsis link to false for later utilization
+        clicked_ellipsis = False
 
-    # Loop to handle pagination when necessary
-    while True:
-        # Check rows if Results Found in either case
-        provider_table = wait.until(EC.presence_of_element_located((By.XPATH, "//html/body/form/div[3]/div[2]/div/div/div/div/div/table/tbody")))
-        provider_rows = provider_table.find_elements(By.XPATH, ".//tr")
+        # Loop to handle pagination when necessary
+        while True:
+            # Check rows if Results Found in either case
+            provider_table = wait.until(EC.presence_of_element_located((By.XPATH, "//html/body/form/div[3]/div[2]/div/div/div/div/div/table/tbody")))
+            provider_rows = provider_table.find_elements(By.XPATH, ".//tr")
 
-        # Check each row for a match (skip first row as it is a header row)
-        for row in provider_rows[1:]:
+            # Check each row for a match (skip first row as it is a header row)
+            for row in provider_rows[1:]:
+                try:
+                    provider_name = row.find_element(By.XPATH, ".//td[1]/a").text.strip().upper()
+                    provider_specialty = row.find_element(By.XPATH, ".//td[2]").text.strip().upper()
+
+                    print(f"Checking: {provider_name} - {provider_specialty}")
+
+                    # Match on first and last name or last name alone, and exact specialty match
+                    if expected_first in provider_name and expected_last in provider_name and expected_specialty == provider_specialty:
+                        print(f"Match found: {provider_name} - {provider_specialty}")
+                        return "Y"
+
+                except NoSuchElementException as e:
+                    print(f"Element not found in row: {e}")
+
+            # Check for presence of a numbered pagination link
             try:
-                provider_name = row.find_element(By.XPATH, ".//td[1]/a").text.strip().upper()
-                provider_specialty = row.find_element(By.XPATH, ".//td[2]").text.strip().upper()
+                pagination_row = driver.find_element(By.XPATH, "//tr[@class='pagination-ys']")
+                page_links = pagination_row.find_elements(By.XPATH, ".//td/a[contains(@href, 'Page$')]")
+                current_page = pagination_row.find_element(By.XPATH, ".//td/span").text.strip()
 
-                print(f"Checking: {provider_name} - {provider_specialty}")
+                next_page_clicked = False
 
-                # Match on first and last name or last name alone, and exact specialty match
-                if expected_first in provider_name and expected_last in provider_name and expected_specialty == provider_specialty:
-                    print(f"Match found: {provider_name} - {provider_specialty}")
-                    return "Y"
+                for link in page_links:
+                    page_number = link.text.strip()
+                    if page_number == "..." and not clicked_ellipsis:
+                        link.click()
+                        print("Next set of pages link clicked")
+                        time.sleep(1)
+                        next_page_clicked = True
+                        clicked_ellipsis = True
+                        break
+                    elif page_number.isdigit() and int(page_number) > int(current_page):
+                        link.click()
+                        print(f"Page {page_number} clicked")
+                        time.sleep(1)
+                        next_page_clicked = True
+                        break
 
-            except NoSuchElementException as e:
-                print(f"Element not found in row: {e}")
+                if not next_page_clicked:
+                    break
 
-        # Check for presence of a numbered pagination link
+            except NoSuchElementException:
+                break
 
+        print(f"No match found for {expected_first} {expected_last} with speciality {expected_specialty}")
+        return "N"
+
+    except Exception as e:
+        print(f"An error occured: {e}")
+        return "N"
