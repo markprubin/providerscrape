@@ -64,7 +64,7 @@ def search_npi_and_save(npi, output_screenshot):
         return
 
     # Wait for results to load
-    time.sleep(2)  # Adjust if needed based on connection speed and site response time
+    time.sleep(3)  # Adjust if needed based on connection speed and site response time
 
     # Take a screenshot and save it as PNG
     driver.save_screenshot(output_screenshot)
